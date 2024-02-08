@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaf Disease Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        #result {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Leaf Disease Detection</h1>
+    <form action="/predict" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Predict</button>
+    </form>
+    <div id="result"></div>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script>
+        $('form').submit(function (e) {
+            e.preventDefault();
+
+            var formData = new FormData(this);
+
+            $.ajax({
+                url: '/predict',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (data) {
+                    if (data.error) {
+                        $('#result').html('<p style="color: red;">Error: ' + data.error + '</p>');
+                    } else {
+                        $('#result').html('<p style="color: green;">Prediction: ' + JSON.stringify(data.result) + '</p>');
+                    }
+                },
+                error: function () {
+                    $('#result').html('<p style="color: red;">An error occurred during the prediction.</p>');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
