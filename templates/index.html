@@ -1,54 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaf Disease Detection</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-        }
+from flask import Flask, render_template, request, jsonify
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+import numpy as np
+import io
 
-        #result {
-            font-weight: bold;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Leaf Disease Detection</h1>
-    <form action="/predict" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*" required>
-        <button type="submit">Predict</button>
-    </form>
-    <div id="result"></div>
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script>
-        $('form').submit(function (e) {
-            e.preventDefault();
+app = Flask(__name__)
 
-            var formData = new FormData(this);
+model = load_model('model.h5')
 
-            $.ajax({
-                url: '/predict',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function (data) {
-                    if (data.error) {
-                        $('#result').html('<p style="color: red;">Error: ' + data.error + '</p>');
-                    } else {
-                        $('#result').html('<p style="color: green;">Prediction: ' + JSON.stringify(data.result) + '</p>');
-                    }
-                },
-                error: function () {
-                    $('#result').html('<p style="color: red;">An error occurred during the prediction.</p>');
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+def predict_disease(file):
+    img = image.load_img(io.BytesIO(file.read()), target_size=(225, 225))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
+    prediction = model.predict(img_array)
+
+    class_names = ["Early_Blight", "Healthy", "Late_Blight"]  
+    predicted_class_index = np.argmax(prediction)
+    predicted_class_name = class_names[predicted_class_index]
+
+    return predicted_class_name
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'})
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'})
+
+    try:
+        result = predict_disease(file)
+        return jsonify({'result': result})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
