@@ -14,7 +14,7 @@ def predict_disease(file):
     img_array = np.expand_dims(img_array, axis=0) / 255.0
     prediction = model.predict(img_array)
 
-    class_names = ["Late_Blight", "Healthy", "Early_Blight"]  
+    class_names = ["Early_Blight", "Healthy", "Late_Blight"]  
     predicted_class_index = np.argmax(prediction)
     predicted_class_name = class_names[predicted_class_index]
 
