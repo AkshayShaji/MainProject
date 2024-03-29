@@ -1,0 +1,110 @@
+import os
+import numpy as np
+import IPython.display as display
+from matplotlib import pyplot as plt
+from matplotlib.pyplot import figure
+import seaborn as sns
+from tensorflow.keras.callbacks import History
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import SGD
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+input_folder = "/content/drive/MyDrive/Segmentation"
+batch_size = 64
+num_classes = 3
+epochs = 10
+
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    validation_split=0.2
+)
+
+train_generator = train_datagen.flow_from_directory(
+    input_folder,
+    target_size=(224, 224),
+    batch_size=batch_size,
+    class_mode='categorical',
+    subset='training'
+)
+
+validation_generator = train_datagen.flow_from_directory(
+    input_folder,
+    target_size=(224, 224),
+    batch_size=batch_size,
+    class_mode='categorical',
+    subset='validation'
+)
+
+base_model = VGG16(weights='imagenet', include_top=False)
+
+for layer in base_model.layers:
+    layer.trainable = False
+
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+x = Dense(1024, activation='relu')(x)
+predictions = Dense(num_classes, activation='softmax')(x)
+
+model = Model(inputs=base_model.input, outputs=predictions)
+
+model.summary()
+
+model.compile(optimizer=SGD(lr=0.001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+
+history=model.fit(train_generator, epochs=epochs, validation_data=validation_generator)
+
+sns.set_theme()
+sns.set_context("poster")
+figure(figsize=(25, 25), dpi=100)
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
+
+model.save("/content/drive/MyDrive/leaf.h5")
+
+model_json = model.to_json()
+with open("model.json", "w") as json_file:
+    json_file.write(model_json)
+
+from sklearn.metrics import confusion_matrix
+# ... (your previous code)
+predictions = model.predict(validation_generator)
+# Get predictions and true labels from generators
+y_true = validation_generator.classes
+y_pred = np.argmax(predictions, axis=1)
+# Calculate confusion matrix
+cm = confusion_matrix(y_true, y_pred)
+# Calculate accuracy
+accuracy = np.sum(np.diag(cm)) / np.sum(cm)
+accuracy_percent = accuracy * 100
+accuracy_percent_formatted = f"{accuracy_percent:.2f}%"
+# Calculate precision, recall, and F1-score (optional)
+precision = np.zeros(cm.shape[0])
+recall = np.zeros(cm.shape[0])
+f1_score = np.zeros(cm.shape[0])
+for i in range(cm.shape[0]):
+    if np.sum(cm[i, :]) > 0:  # Avoid division by zero
+        precision[i] = cm[i, i] / np.sum(cm[i, :])
+    if np.sum(cm[:, i]) > 0:
+        recall[i] = cm[i, i] / np.sum(cm[:, i])
+    if precision[i] > 0 and recall[i] > 0:
+        f1_score[i] = 2 * (precision[i] * recall[i]) / (precision[i] + recall[i])
+# Print results
+print("Confusion Matrix:\n", cm)
+print("Accuracy:", accuracy_percent_formatted)
+print("Precision:", precision)
+print("Recall:", recall)
+print("F1-Score:", f1_score)  # Optional
+# ... (your remaining code for saving the model and prediction, etc.)
