@@ -1,0 +1,34 @@
+import os
+from PIL import Image
+import numpy as np
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+def enhance_images(dataset_path, output_path, target_size=(256, 256)):
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    for main_class in os.listdir(dataset_path):
+        main_class_path = os.path.join(dataset_path, main_class)
+        if os.path.isdir(main_class_path):
+            for subclass in os.listdir(main_class_path):
+                subclass_path = os.path.join(main_class_path, subclass)
+                if os.path.isdir(subclass_path):
+                    output_class_path = os.path.join(output_path, main_class, subclass)
+                    os.makedirs(output_class_path, exist_ok=True)
+                    for image_file in os.listdir(subclass_path):
+                        image_path = os.path.join(subclass_path, image_file)
+                        output_image_path = os.path.join(output_class_path, image_file)
+                        try:
+                            img = Image.open(image_path)
+                            img = img.resize(target_size)
+                            img_array = np.array(img)
+                            img_array = img_array / 255.0
+                            img_normalized = Image.fromarray((img_array * 255).astype(np.uint8))
+                            img_normalized.save(output_image_path)
+                        except Exception as e:
+                            print(f"Error processing {image_path}: {e}")
+
+dataset_path = "/content/drive/MyDrive/PLD_3_Classes_256"
+output_path = "/content/drive/MyDrive/Dataset"
+enhance_images(dataset_path, output_path)
