@@ -1,0 +1,38 @@
+import os
+import numpy as np
+import cv2
+from PIL import Image
+from skimage import measure
+import matplotlib.pyplot as plt
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+def segment_and_detect_disease(dataset_path, output_path, threshold=100):
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    for main_class in os.listdir(dataset_path):
+        main_class_path = os.path.join(dataset_path, main_class)
+        if os.path.isdir(main_class_path):
+            for subclass in os.listdir(main_class_path):
+                subclass_path = os.path.join(main_class_path, subclass)
+                if os.path.isdir(subclass_path):
+                    output_class_path = os.path.join(output_path, main_class, subclass)
+                    os.makedirs(output_class_path, exist_ok=True)
+                    for image_file in os.listdir(subclass_path):
+                        image_path = os.path.join(subclass_path, image_file)
+                        output_image_path = os.path.join(output_class_path, image_file)
+                        try:
+                            img = Image.open(image_path)
+                            img_array = np.array(img)
+                            gray_img = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+                            _, binary_img = cv2.threshold(gray_img, threshold, 255, cv2.THRESH_BINARY)
+                            contours, _ = cv2.findContours(binary_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                            marked_img = cv2.drawContours(img_array.copy(), contours, -1, (255, 0, 0), 2)
+                            marked_img_pil = Image.fromarray(marked_img.astype(np.uint8))
+                            marked_img_pil.save(output_image_path)
+                        except Exception as e:
+                            print(f"Error processing {image_path}: {e}")
+
+enhanced_dataset_path = "/content/drive/MyDrive/Dataset"
+output_segmented_and_marked_path = "/content/drive/MyDrive/Segmentation"
