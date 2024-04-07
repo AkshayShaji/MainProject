@@ -1,65 +1,86 @@
-import os
+import tensorflow as tf
 import numpy as np
-import IPython.display as display
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.layers import Dense, Flatten, Dropout
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
 from matplotlib import pyplot as plt
 from matplotlib.pyplot import figure
 import seaborn as sns
 from tensorflow.keras.callbacks import History
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications import VGG16
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
-from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD
 
 from google.colab import drive
 drive.mount('/content/drive')
 
-input_folder = "/content/drive/MyDrive/Segmentation"
-batch_size = 64
+train_dir = '/content/drive/MyDrive/Segmentation/Training'
+test_dir = '/content/drive/MyDrive/Segmentation/Testing'
+val_dir = '/content/drive/MyDrive/Segmentation/Validation'
+image_size = (224, 224)
+batch_size = 32
 num_classes = 3
-epochs = 10
 
 train_datagen = ImageDataGenerator(
     rescale=1./255,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
     shear_range=0.2,
     zoom_range=0.2,
     horizontal_flip=True,
-    validation_split=0.2
+    fill_mode='nearest'
 )
+
+test_datagen = ImageDataGenerator(rescale=1./255)
+val_datagen = ImageDataGenerator(rescale=1./255)
 
 train_generator = train_datagen.flow_from_directory(
-    input_folder,
-    target_size=(224, 224),
+    train_dir,
+    target_size=image_size,
     batch_size=batch_size,
-    class_mode='categorical',
-    subset='training'
+    class_mode='categorical'
 )
 
-validation_generator = train_datagen.flow_from_directory(
-    input_folder,
-    target_size=(224, 224),
+test_generator = test_datagen.flow_from_directory(
+    test_dir,
+    target_size=image_size,
     batch_size=batch_size,
     class_mode='categorical',
-    subset='validation'
+    shuffle=False
 )
 
-base_model = VGG16(weights='imagenet', include_top=False)
+val_generator = val_datagen.flow_from_directory(
+    val_dir,
+    target_size=image_size,
+    batch_size=batch_size,
+    class_mode='categorical',
+    shuffle=False
+)
 
-for layer in base_model.layers:
+vgg_base = VGG16(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+
+for layer in vgg_base.layers:
     layer.trainable = False
 
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
-x = Dense(1024, activation='relu')(x)
-predictions = Dense(num_classes, activation='softmax')(x)
+x = Flatten()(vgg_base.output)
+x = Dense(512, activation='relu')(x)
+x = Dropout(0.5)(x)
+output = Dense(num_classes, activation='softmax')(x)
 
-model = Model(inputs=base_model.input, outputs=predictions)
+model = Model(inputs=vgg_base.input, outputs=output)
 
 model.summary()
 
-model.compile(optimizer=SGD(lr=0.001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer=Adam(lr=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
 
-history=model.fit(train_generator, epochs=epochs, validation_data=validation_generator)
+history = model.fit(
+    train_generator,
+    steps_per_epoch=train_generator.samples // batch_size,
+    epochs=20,
+    validation_data=val_generator,
+    validation_steps=val_generator.samples // batch_size
+)
 
 sns.set_theme()
 sns.set_context("poster")
@@ -80,9 +101,9 @@ with open("model.json", "w") as json_file:
 
 from sklearn.metrics import confusion_matrix
 # ... (your previous code)
-predictions = model.predict(validation_generator)
+predictions = model.predict(val_generator)
 # Get predictions and true labels from generators
-y_true = validation_generator.classes
+y_true = val_generator.classes
 y_pred = np.argmax(predictions, axis=1)
 # Calculate confusion matrix
 cm = confusion_matrix(y_true, y_pred)
