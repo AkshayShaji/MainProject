@@ -6,10 +6,10 @@ import io
 
 app = Flask(__name__)
 
-model = load_model('model.h5')
+model = load_model('cnn\leaf.h5')
 
 def predict_disease(file):
-    img = image.load_img(io.BytesIO(file.read()), target_size=(225, 225))
+    img = image.load_img(io.BytesIO(file.read()), target_size=(224, 224))
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0) / 255.0
     prediction = model.predict(img_array)
@@ -42,4 +42,3 @@ def predict():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
