@@ -9,6 +9,9 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin: 20px;
+            background-image: url('../static/istockphoto-546172924-612x612.jpg');
+            background-repeat: no-repeat;
+            background-size: cover;
         }
 
         #result {
@@ -20,13 +23,32 @@
             margin-top: 20px;
             max-width: 100%;
         }
+        .button{
+            width: 200px;
+            padding: 15px 0;
+            text-align: center;
+            margin: 20px 10px;
+            border-radius: 25px;
+            font-weight: bold;
+            border: 2px solid red;
+            background: transparent;
+            color: red;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .button:hover{
+            transition: .1s;
+            color: black;
+            background-color: white;
+            border: 2px solid transparent;
+        }
     </style>
 </head>
 <body>
     <h1>Leaf Disease Detection</h1>
     <form id="upload-form">
         <input type="file" name="file" accept="image/*" id="file-input" required>
-        <button type="button" onclick="predict()">Predict</button>
+        <button type="button" onclick="predict()" class="button">Predict</button>
     </form>
     <div id="result"></div>
     <img id="image-preview" src="" alt="Uploaded Image" style="display: none;">
