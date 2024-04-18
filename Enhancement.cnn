@@ -1,33 +1,43 @@
+import cv2
 import os
-from PIL import Image
-import numpy as np
 
 from google.colab import drive
 drive.mount('/content/drive')
 
-def enhance_images(dataset_path, output_path, target_size=(256, 256)):
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-    for main_class in os.listdir(dataset_path):
-        main_class_path = os.path.join(dataset_path, main_class)
-        if os.path.isdir(main_class_path):
-            for subclass in os.listdir(main_class_path):
-                subclass_path = os.path.join(main_class_path, subclass)
-                if os.path.isdir(subclass_path):
-                    output_class_path = os.path.join(output_path, main_class, subclass)
-                    os.makedirs(output_class_path, exist_ok=True)
-                    for image_file in os.listdir(subclass_path):
-                        image_path = os.path.join(subclass_path, image_file)
-                        output_image_path = os.path.join(output_class_path, image_file)
-                        try:
-                            img = Image.open(image_path)
-                            img = img.resize(target_size)
-                            img_array = np.array(img)
-                            img_array = img_array / 255.0
-                            img_normalized = Image.fromarray((img_array * 255).astype(np.uint8))
-                            img_normalized.save(output_image_path)
-                        except Exception as e:
-                            print(f"Error processing {image_path}: {e}")
+def enhance_images(input_folder, output_folder):
+    # Create the output folder if it doesn't exist
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # Loop through each class folder
+    for class_folder in os.listdir(input_folder):
+        class_folder_path = os.path.join(input_folder, class_folder)
+        if os.path.isdir(class_folder_path):
+            output_class_folder = os.path.join(output_folder, class_folder)
+            if not os.path.exists(output_class_folder):
+                os.makedirs(output_class_folder)
+
+            # Loop through each image in the class folder
+            for filename in os.listdir(class_folder_path):
+                if filename.endswith(".jpg") or filename.endswith(".png"):
+                    # Read the image
+                    image_path = os.path.join(class_folder_path, filename)
+                    image = cv2.imread(image_path)
+
+                    # Convert to grayscale for noise removal
+                    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+                    # Noise removal using Median Blur
+                    denoised_image = cv2.medianBlur(gray_image, 5)
+
+                    # Perform adaptive histogram equalization
+                    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+                    enhanced_image = clahe.apply(denoised_image)
+
+                    # Save the enhanced image to the output class folder
+                    output_path = os.path.join(output_class_folder, filename)
+                    cv2.imwrite(output_path, enhanced_image)
+                    print(f"Enhanced image saved: {output_path}")
 
 dataset_path = "/content/drive/MyDrive/PLD_3_Classes_256"
 output_path = "/content/drive/MyDrive/Dataset"
