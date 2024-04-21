@@ -27,8 +27,8 @@ def enhance_images(input_folder, output_folder):
                     # Convert to grayscale for noise removal
                     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-                    # Noise removal using Median Blur
-                    denoised_image = cv2.medianBlur(gray_image, 5)
+                    # Noise removal using Gaussian Blur
+                    denoised_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
 
                     # Perform adaptive histogram equalization
                     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
