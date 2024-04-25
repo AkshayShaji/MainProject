@@ -1,57 +1,35 @@
 import os
-import cv2
+from PIL import Image
+import numpy as np
 
 from google.colab import drive
 drive.mount('/content/drive')
 
-def enhance_image(image):
-    # Convert image to LAB color space
-    lab_image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-
-    # Split the LAB image into L, A, and B channels
-    l_channel, a_channel, b_channel = cv2.split(lab_image)
-
-    # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to L channel
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    enhanced_l_channel = clahe.apply(l_channel)
-
-    # Merge the enhanced L channel with the original A and B channels
-    enhanced_lab_image = cv2.merge((enhanced_l_channel, a_channel, b_channel))
-
-    # Convert LAB image back to RGB color space
-    enhanced_rgb_image = cv2.cvtColor(enhanced_lab_image, cv2.COLOR_LAB2BGR)
-
-    return enhanced_rgb_image
-
-def remove_noise(image):
-    # Apply Gaussian Blur to remove noise
-    blurred_image = cv2.GaussianBlur(image, (5, 5), 0)
-
-    return blurred_image
-def enhance_and_save_images(input_folder, output_folder):
-    # Create output folder if it doesn't exist
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    # Loop through each image in the input folder
-    for filename in os.listdir(input_folder):
-        if filename.endswith(".jpg") or filename.endswith(".png"):
-            # Read the image
-            image_path = os.path.join(input_folder, filename)
-            image = cv2.imread(image_path)
-
-            # Enhance the image
-            enhanced_image = enhance_image(image)
-
-            # Remove noise from the enhanced image
-            denoised_image = remove_noise(enhanced_image)
-
-            # Save the enhanced and denoised image to the output folder
-            output_path = os.path.join(output_folder, filename)
-            cv2.imwrite(output_path, denoised_image)
-            print(f"Saved {output_path}")
+def enhance_images(dataset_path, output_path, target_size=(256, 256)):
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    for main_class in os.listdir(dataset_path):
+        main_class_path = os.path.join(dataset_path, main_class)
+        if os.path.isdir(main_class_path):
+            for subclass in os.listdir(main_class_path):
+                subclass_path = os.path.join(main_class_path, subclass)
+                if os.path.isdir(subclass_path):
+                    output_class_path = os.path.join(output_path, main_class, subclass)
+                    os.makedirs(output_class_path, exist_ok=True)
+                    for image_file in os.listdir(subclass_path):
+                        image_path = os.path.join(subclass_path, image_file)
+                        output_image_path = os.path.join(output_class_path, image_file)
+                        try:
+                            img = Image.open(image_path)
+                            img = img.resize(target_size)
+                            img_array = np.array(img)
+                            img_array = img_array / 255.0
+                            img_normalized = Image.fromarray((img_array * 255).astype(np.uint8))
+                            img_normalized.save(output_image_path)
+                        except Exception as e:
+                            print(f"Error processing {image_path}: {e}")
 
 # Example usage
-input_folder = "/content/drive/MyDrive/PLD_3_Classes_256/Validation/Healthy"
-output_folder = "/content/drive/MyDrive/Dataset/Validation/Healthy"
-enhance_and_save_images(input_folder, output_folder)
+dataset_path = "/content/drive/MyDrive/PLD_3_Classes_256"
+output_path = "/content/drive/MyDrive/Dataset"
+enhance_images(dataset_path, output_path)
