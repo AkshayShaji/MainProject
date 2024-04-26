@@ -1,11 +1,11 @@
 import os
-from PIL import Image
+from PIL import Image, ImageFilter, ImageOps
 import numpy as np
 
 from google.colab import drive
 drive.mount('/content/drive')
 
-def enhance_images(dataset_path, output_path, target_size=(256, 256)):
+def enhance_images(dataset_path, output_path, target_size=(256, 256), shadow_intensity=0.5):
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     for main_class in os.listdir(dataset_path):
@@ -21,10 +21,29 @@ def enhance_images(dataset_path, output_path, target_size=(256, 256)):
                         output_image_path = os.path.join(output_class_path, image_file)
                         try:
                             img = Image.open(image_path)
+                            # Resize the image
                             img = img.resize(target_size)
+                            
+                            # Noise reduction
+                            img_blur = img.filter(ImageFilter.GaussianBlur(radius=2))
+
+                            # Histogram equalization
+                            img = ImageOps.equalize(img)
+                            
+                            # Convert to numpy array and normalize
                             img_array = np.array(img)
                             img_array = img_array / 255.0
+                            
+                            # Convert back to PIL image
                             img_normalized = Image.fromarray((img_array * 255).astype(np.uint8))
+
+                            # Decrease color intensity of darker areas
+                            img_array = np.array(img)
+                            shadow_mask = img_array < (shadow_intensity * 255)
+                            img_array[shadow_mask] = (img_array[shadow_mask] * shadow_intensity).astype(np.uint8)
+                            img = Image.fromarray(img_array)
+                            
+                            # Save the enhanced image
                             img_normalized.save(output_image_path)
                         except Exception as e:
                             print(f"Error processing {image_path}: {e}")
